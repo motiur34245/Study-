@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>📚 স্মার্ট স্টাডি ট্র্যাকার - তারিখ সার্চ + মাসিক/বার্ষিক ওভারভিউ</title>
+    <!-- Firebase SDK -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f2a, #030614);
+            color: #f0f3ff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        #bg-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none; opacity: 0.35;
+        }
+        .app-container { position: relative; z-index: 10; max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .glass-card {
+            background: rgba(15, 25, 45, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+        }
+        .btn {
+            background: linear-gradient(135deg, #3a6eff, #2b4bc0);
+            border: none; padding: 10px 22px; border-radius: 40px;
+            font-weight: bold; color: white; cursor: pointer;
+            transition: 0.2s; font-size: 1rem;
+        }
+        .btn-outline { background: transparent; border: 1.5px solid #6b8cff; color: #c6deff; }
+        .btn-danger { background: linear-gradient(135deg, #ff4d6d, #c9184a); }
+        .btn-small { padding: 6px 14px; font-size: 0.85rem; }
+        .btn:hover { transform: translateY(-3px); filter: brightness(1.05); }
+        .checkbox-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr));
+            gap: 0.8rem; margin: 1.5rem 0;
+        }
+        .hour-card {
+            background: rgba(25,35,60,0.8); border-radius: 1.2rem; padding: 8px 6px;
+            text-align: center; border: 1px solid rgba(255,255,255,0.15);
+            font-size: 0.9rem;
+        }
+        .timer-display {
+            font-size: 2.5rem; font-family: monospace; background: #00000066;
+            display: inline-block; padding: 0.3rem 1.2rem; border-radius: 60px;
+            letter-spacing: 3px; margin: 0.5rem 0;
+        }
+        .progress-bar {
+            width: 100%; background: #1e2a4a; border-radius: 30px; height: 26px; overflow: hidden;
+        }
+        .progress-fill {
+            width: 0%; height: 100%; background: linear-gradient(90deg,#2ed15e,#3bc9ff);
+            border-radius: 30px; transition: width 0.3s; display: flex; align-items: center;
+            justify-content: flex-end; padding-right: 10px; font-weight: bold; font-size: 0.8rem;
+        }
+        .admin-table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; }
+        .admin-table th, .admin-table td { padding: 12px; text-align: left; border-bottom: 1px solid #2e3a66; }
+        input, .profile-input, .date-input {
+            width: 100%; padding: 12px; margin: 8px 0; border-radius: 40px;
+            border: none; background: #0f1a2f; color: white; font-size: 1rem;
+        }
+        .user-badge { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .stats-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px; }
+        .stat-card { background: #0a1028cc; border-radius: 1.5rem; padding: 1rem; flex: 1; min-width: 150px; text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: bold; color: #6b8cff; }
+        @media (max-width: 760px) { .checkbox-grid { grid-template-columns: repeat(2,1fr); } .timer-display { font-size: 1.8rem; } }
+    </style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="app-container" id="appRoot">
+    <!-- Auth Panel -->
+    <div id="authPanel" class="glass-card" style="max-width: 500px; margin: 2rem auto;">
+        <h2 style="text-align:center;">📖 স্টাডি ট্র্যাকার + ওভারভিউ</h2>
+        <div style="display: flex; gap: 12px; justify-content: center; margin: 15px 0;">
+            <button id="showLoginBtn" class="btn">লগইন</button>
+            <button id="showSignupBtn" class="btn btn-outline">সাইনআপ</button>
+        </div>
+        <div id="loginForm" style="display:none;">
+            <input type="email" id="loginEmail" placeholder="ইমেইল" class="profile-input">
+            <input type="password" id="loginPassword" placeholder="পাসওয়ার্ড" class="profile-input">
+            <button id="doLoginBtn" class="btn" style="width:100%;">প্রবেশ</button>
+        </div>
+        <div id="signupForm" style="display:none;">
+            <input type="text" id="signupUsername" placeholder="ইউজার নাম" class="profile-input">
+            <input type="text" id="signupClass" placeholder="শ্রেনী" class="profile-input">
+            <input type="email" id="signupEmail" placeholder="ইমেইল" class="profile-input">
+            <input type="password" id="signupPassword" placeholder="পাসওয়ার্ড" class="profile-input">
+            <button id="doSignupBtn" class="btn" style="width:100%;">একাউন্ট তৈরি করুন</button>
+        </div>
+        <div id="authErrorMsg" style="color:#ffaa88; margin-top:12px; text-align:center;"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" style="display:none;">
+        <div class="glass-card user-badge">
+            <div><h2>👋 হ্যালো, <span id="displayUsername">...</span> (<span id="displayClass"></span>)</h2><p>📧 <span id="displayEmail"></span></p></div>
+            <button id="logoutBtn" class="btn btn-danger">লগআউট</button>
+        </div>
+
+        <!-- এডমিন প্যানেল -->
+        <div id="adminPanel" class="glass-card" style="display:none;">
+            <h3>🛡️ এডমিন প্যানেল - সকল ইউজারের অগ্রগতি</h3>
+            <div style="overflow-x: auto;"><table class="admin-table"><thead><tr><th>ইউজার</th><th>শ্রেনী</th><th>ইমেইল</th><th>আজকের ঘন্টা (%)</th><th>মাসিক গড়</th></tr></thead><tbody id="adminTableBody"></tbody></table></div>
+        </div>
+
+        <!-- 📅 ডেট সার্চ সেকশন (নতুন) -->
+        <div class="glass-card">
+            <h3>🔍 পূর্বের যেকোনো তারিখের রেকর্ড দেখুন</h3>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+                <div style="flex:2"><label>তারিখ নির্বাচন করুন</label><input type="date" id="searchDate" class="date-input"></div>
+                <div><button id="searchHistoryBtn" class="btn btn-small">🔎 দেখুন</button></div>
+            </div>
+            <div id="historyResult" style="margin-top: 15px; padding: 12px; background: #0f1a2f55; border-radius: 1rem;">
+                <p>📖 <strong id="historyDateLabel"></strong> : <span id="historyHours">--</span> ঘন্টা পড়েছেন (মোট ১১ ঘন্টার মধ্যে)</p>
+                <div class="progress-bar" style="margin-top:8px"><div id="historyProgressFill" class="progress-fill" style="width:0%">0%</div></div>
+            </div>
+        </div>
+
+        <!-- মাসিক + বার্ষিক ওভারভিউ -->
+        <div class="glass-card">
+            <h3>📊 মাসিক ওভারভিউ (<span id="currentMonthName"></span>)</h3>
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-number" id="monthTotalHours">0</div><div>মোট ঘন্টা</div></div>
+                <div class="stat-card"><div class="stat-number" id="monthAvgHours">0</div><div>গড় (ঘন্টা/দিন)</div></div>
+                <div class="stat-card"><div class="stat-number" id="monthActiveDays">0</div><div>সক্রিয় দিন</div></div>
+            </div>
+            <h4 style="margin-top: 20px;">📆 বার্ষিক ওভারভিউ (<span id="currentYear"></span>)</h4>
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-number" id="yearTotalHours">0</div><div>বছরের মোট ঘন্টা</div></div>
+                <div class="stat-card"><div class="stat-number" id="yearAvgMonth">0</div><div>গড় (ঘন্টা/মাস)</div></div>
+            </div>
+            <canvas id="yearlyChartCanvas" height="180" style="margin-top: 15px;"></canvas>
+        </div>
+
+        <!-- ইউজারের টুডে ট্র্যাকার -->
+        <div class="glass-card">
+            <h3>📅 আজকের চ্যালেঞ্জ: <span id="todayDate"></span> | 🎯 ১১ ঘন্টা</h3>
+            <div id="hourChecklist" class="checkbox-grid"></div>
+            <div class="progress-bar"><div class="progress-fill" id="dailyProgressFill">0%</div></div>
+            <p>✅ সম্পন্ন: <span id="completedCount">0</span> / ১১ ঘন্টা</p>
+        </div>
+
+        <!-- টাইমার -->
+        <div class="glass-card" style="text-align:center;">
+            <h3>⏳ ১ ঘন্টা ফোকাস টাইমার</h3>
+            <div class="timer-display" id="timerDisplay">01:00:00</div>
+            <div><button id="startTimerBtn" class="btn">▶ শুরু</button> <button id="pauseTimerBtn" class="btn btn-outline">⏸ বিরতি</button> <button id="resetTimerBtn" class="btn btn-outline">⟳ রিসেট</button></div>
+            <p style="margin-top:12px;">✨ টাইমার শেষ হলে পরবর্তী ঘন্টা স্বয়ংক্রিয়ভাবে সম্পন্ন হবে</p>
+        </div>
+
+        <div class="glass-card"><h3>📈 আজকের অগ্রগতি</h3><canvas id="dailyGraphCanvas" height="140"></canvas></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    
+    // 🔥 আপনার Firebase Config এখানে দিন
+    const firebaseConfig = {
+  apiKey: "AIzaSyDi1R_E662VnaSZwbTQCT_eYhmDVDOkL9M",
+  authDomain: "online-bazaar-bd.firebaseapp.com",
+  projectId: "online-bazaar-bd",
+  storageBucket: "online-bazaar-bd.firebasestorage.app",
+  messagingSenderId: "126666569068",
+  appId: "1:126666569068:web:ca14294e0d1b62c8472f49",
+  measurementId: "G-10VDRSBG1X"
+};
+    if (firebaseConfig.apiKey === "AIzaSyDummyReplaceWithYourKey") {
+        document.getElementById("authErrorMsg").innerHTML = "⚠️ Firebase config দিন!";
+        console.error("Invalid Firebase config");
+    }
+    
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    let currentUser = null;
+    let currentUserRole = "user";
+    let todayData = { completedHours: new Array(11).fill(false) };
+    let todayDateStr = "";
+    let dailyChart, yearlyChart;
+    let timerSeconds = 3600, timerActive = false, timerInterval = null;
+    
+    // Three.js Background
+    import * as THREE from "three";
+    const canvasBg = document.getElementById('bg-canvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvasBg, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const geometry = new THREE.TorusKnotGeometry(1.2, 0.3, 200, 32, 3, 4);
+    const material = new THREE.MeshStandardMaterial({ color: 0x3a6eff, roughness: 0.4, metalness: 0.7, emissive: 0x112244 });
+    const knot = new THREE.Mesh(geometry, material);
+    scene.add(knot);
+    scene.add(new THREE.AmbientLight(0x404060));
+    const light = new THREE.PointLight(0xffffff, 1);
+    light.position.set(5,5,5);
+    scene.add(light);
+    camera.position.z = 4;
+    function animate() { requestAnimationFrame(animate); knot.rotation.x += 0.008; knot.rotation.y += 0.012; renderer.render(scene,camera); }
+    animate();
+    window.addEventListener('resize', () => { renderer.setSize(window.innerWidth,window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
+    
+    // helpers
+    function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+    
+    async function fetchUserRole(uid, email) {
+        try {
+            const userDoc = await getDoc(doc(db, "users", uid));
+            if (userDoc.exists()) return userDoc.data().role || "user";
+            else {
+                const role = (email === "admin@studytracker.com") ? "admin" : "user";
+                await setDoc(doc(db, "users", uid), { email, role, username: "ছাত্র", class: "N/A" });
+                return role;
+            }
+        } catch(e) { return "user"; }
+    }
+    
+    async function loadTodayProgress(userId) {
+        todayDateStr = getTodayStr();
+        const docRef = doc(db, "studyProgress", `${userId}_${todayDateStr}`);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) { todayData = snap.data(); if (!todayData.completedHours || todayData.completedHours.length!==11) todayData.completedHours = new Array(11).fill(false); }
+        else { todayData = { userId, date: todayDateStr, completedHours: new Array(11).fill(false) }; await setDoc(docRef, todayData); }
+        renderCheckboxes();
+        updateDailyStatsAndGraphs();
+    }
+    
+    async function updateHourCompletion(userId, hourIndex, isChecked) {
+        const docRef = doc(db, "studyProgress", `${userId}_${todayDateStr}`);
+        const snap = await getDoc(docRef);
+        let hours = new Array(11).fill(false);
+        if (snap.exists()) hours = snap.data().completedHours || hours;
+        hours[hourIndex] = isChecked;
+        await setDoc(docRef, { completedHours: hours, userId, date: todayDateStr }, { merge: true });
+        todayData.completedHours = hours;
+        renderCheckboxes();
+        updateDailyStatsAndGraphs();
+        if (currentUserRole === 'admin') loadAdminDashboard();
+    }
+    
+    async function autoCompleteNextHour() {
+        const hours = todayData.completedHours;
+        const nextIdx = hours.findIndex(ch => !ch);
+        if (nextIdx === -1) { alert("🎉 চমৎকার! আজকের ১১ ঘন্টা সম্পন্ন!"); return; }
+        await updateHourCompletion(currentUser.uid, nextIdx, true);
+        resetTimerUI();
+    }
+    
+    function renderCheckboxes() {
+        const container = document.getElementById("hourChecklist");
+        if (!container) return;
+        container.innerHTML = "";
+        for (let i=0;i<11;i++) {
+            const checked = todayData.completedHours[i];
+            const div = document.createElement("div");
+            div.className = "hour-card";
+            div.innerHTML = `<label><span>📖 ঘন্টা ${i+1}</span><input type="checkbox" data-hour="${i}" ${checked ? "checked" : ""}><span>${checked ? "✓" : "◻️"}</span></label>`;
+            const chk = div.querySelector('input');
+            chk.addEventListener('change', async (e) => { if (currentUser) await updateHourCompletion(currentUser.uid, i, chk.checked); else chk.checked = !chk.checked; });
+            container.appendChild(div);
+        }
+        const completedCount = todayData.completedHours.filter(v=>v===true).length;
+        document.getElementById("completedCount").innerText = completedCount;
+        const percent = (completedCount/11)*100;
+        const fillDiv = document.getElementById("dailyProgressFill");
+        fillDiv.style.width = `${percent}%`;
+        fillDiv.innerText = `${Math.round(percent)}%`;
+        updateDailyChart(percent);
+    }
+    
+    function updateDailyChart(percent) {
+        const ctx = document.getElementById('dailyGraphCanvas')?.getContext('2d');
+        if (!ctx) return;
+        if (dailyChart) dailyChart.destroy();
+        dailyChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['সম্পন্ন', 'বাকি'], datasets: [{ data: [percent, 100-percent], backgroundColor: ['#2ed15e','#2c3e66'] }] }, options: { responsive: true, plugins: { legend: { labels: { color: '#ddd' } } } } });
+    }
+    
+    async function updateDailyStatsAndGraphs() { await loadMonthlyAndYearlyOverview(); }
+    
+    // মাসিক + বার্ষিক ওভারভিউ ও গ্রাফ
+    async function loadMonthlyAndYearlyOverview() {
+        if (!currentUser) return;
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        document.getElementById("currentMonthName").innerText = now.toLocaleString('default', { month: 'long' });
+        document.getElementById("currentYear").innerText = currentYear;
+        
+        const progressQuery = query(collection(db, "studyProgress"), where("userId", "==", currentUser.uid));
+        const snap = await getDocs(progressQuery);
+        let monthlyHours = 0, activeDays = 0;
+        let yearlyData = new Array(12).fill(0); // মাস 0-11
+        
+        snap.forEach(docSn => {
+            const data = docSn.data();
+            const dateStr = data.date;
+            const [year, month, day] = dateStr.split('-').map(Number);
+            if (year === currentYear) {
+                const completed = data.completedHours ? data.completedHours.filter(v=>v===true).length : 0;
+                yearlyData[month-1] += completed;
+                if (month-1 === currentMonth) {
+                    monthlyHours += completed;
+                    activeDays++;
+                }
+            }
+        });
+        document.getElementById("monthTotalHours").innerText = monthlyHours;
+        document.getElementById("monthAvgHours").innerText = activeDays ? (monthlyHours/activeDays).toFixed(1) : "0";
+        document.getElementById("monthActiveDays").innerText = activeDays;
+        
+        const totalYear = yearlyData.reduce((a,b)=>a+b,0);
+        document.getElementById("yearTotalHours").innerText = totalYear;
+        document.getElementById("yearAvgMonth").innerText = (totalYear/12).toFixed(1);
+        
+        const ctx = document.getElementById('yearlyChartCanvas')?.getContext('2d');
+        if (ctx) {
+            if (yearlyChart) yearlyChart.destroy();
+            yearlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: ['জানু','ফেব্রু','মার্চ','এপ্রি','মে','জুন','জুলাই','আগ','সেপ্ট','অক্টো','নভে','ডিসে'], datasets: [{ label: 'মোট ঘন্টা', data: yearlyData, backgroundColor: '#3a6eff', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'ঘন্টা', color: '#ccc' } }, x: { ticks: { color: '#ccc' } } } }
+            });
+        }
+    }
+    
+    // 📅 ডেট সার্চ: যেকোনো তারিখের তথ্য দেখাবে
+    async function searchDateHistory(dateStr) {
+        if (!currentUser) return;
+        const docRef = doc(db, "studyProgress", `${currentUser.uid}_${dateStr}`);
+        const snap = await getDoc(docRef);
+        let completedHours = 0;
+        if (snap.exists()) {
+            const hoursArr = snap.data().completedHours || [];
+            completedHours = hoursArr.filter(v=>v===true).length;
+        }
+        document.getElementById("historyDateLabel").innerText = `📅 ${dateStr}`;
+        document.getElementById("historyHours").innerHTML = `<strong>${completedHours}</strong>`;
+        const percent = (completedHours/11)*100;
+        const histFill = document.getElementById("historyProgressFill");
+        histFill.style.width = `${percent}%`;
+        histFill.innerText = `${Math.round(percent)}%`;
+    }
+    
+    // Admin functions
+    async function loadAdminDashboard() {
+        if (currentUserRole !== 'admin') return;
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const tbody = document.getElementById("adminTableBody");
+        tbody.innerHTML = "";
+        for (const userDoc of usersSnapshot.docs) {
+            const uid = userDoc.id;
+            const data = userDoc.data();
+            const username = data.username || "নাম নেই";
+            const classname = data.class || "N/A";
+            const email = data.email;
+            const todayStr = getTodayStr();
+            const progRef = doc(db, "studyProgress", `${uid}_${todayStr}`);
+            const progSnap = await getDoc(progRef);
+            let todayHours = 0;
+            if (progSnap.exists()) todayHours = progSnap.data().completedHours?.filter(v=>v===true).length || 0;
+            const percent = ((todayHours/11)*100).toFixed(0);
+            // monthly avg (simple)
+            const q = query(collection(db, "studyProgress"), where("userId", "==", uid));
+            const progressDocs = await getDocs(q);
+            let total = 0, days = 0;
+            const nowDate = new Date();
+            progressDocs.forEach(docSn => {
+                const docDate = new Date(docSn.data().date);
+                const diff = (nowDate - docDate)/(1000*3600*24);
+                if (diff <= 30 && diff >= 0) {
+                    const completedArr = docSn.data().completedHours || [];
+                    total += completedArr.filter(v=>v===true).length;
+                    days++;
+                }
+            });
+            const avgMonthly = days ? (total/days).toFixed(1) : "0";
+            tbody.innerHTML += `<tr><td>${username}</td><td>${classname}</td><td>${email}</td><td>${percent}% (${todayHours}/11)</td><td>${avgMonthly} h/day</td></tr>`;
+        }
+    }
+    
+    // Timer
+    function updateTimerDisplay() {
+        const h = Math.floor(timerSeconds/3600);
+        const m = Math.floor((timerSeconds%3600)/60);
+        const s = timerSeconds%60;
+        document.getElementById("timerDisplay").innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        if (timerSeconds===0 && timerActive) {
+            clearInterval(timerInterval);
+            timerActive = false;
+            autoCompleteNextHour();
+            resetTimerUI();
+        }
+    }
+    function startTimer() { if (timerInterval) clearInterval(timerInterval); timerActive=true; timerInterval = setInterval(()=>{ if(timerActive && timerSeconds>0){ timerSeconds--; updateTimerDisplay(); } else if(timerSeconds===0 && timerActive){ clearInterval(timerInterval); timerActive=false; autoCompleteNextHour(); resetTimerUI(); } },1000); }
+    function pauseTimer() { timerActive=false; if(timerInterval) clearInterval(timerInterval); timerInterval=null; }
+    function resetTimerUI() { pauseTimer(); timerSeconds=3600; updateTimerDisplay(); timerActive=false; }
+    document.getElementById("startTimerBtn")?.addEventListener("click", startTimer);
+    document.getElementById("pauseTimerBtn")?.addEventListener("click", pauseTimer);
+    document.getElementById("resetTimerBtn")?.addEventListener("click", resetTimerUI);
+    document.getElementById("searchHistoryBtn")?.addEventListener("click", () => { const date = document.getElementById("searchDate").value; if(date) searchDateHistory(date); else alert("তারিখ নির্বাচন করুন"); });
+    
+    // Auth
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            currentUser = user;
+            document.getElementById("authPanel").style.display = "none";
+            document.getElementById("dashboard").style.display = "block";
+            document.getElementById("displayEmail").innerText = user.email;
+            const role = await fetchUserRole(user.uid, user.email);
+            currentUserRole = role;
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+                document.getElementById("displayUsername").innerText = userDoc.data().username || "ছাত্র";
+                document.getElementById("displayClass").innerText = userDoc.data().class || "শ্রেনী";
+            }
+            document.getElementById("todayDate").innerText = getTodayStr();
+            await loadTodayProgress(user.uid);
+            await loadMonthlyAndYearlyOverview();
+            if (currentUserRole === "admin") { document.getElementById("adminPanel").style.display = "block"; loadAdminDashboard(); }
+            else document.getElementById("adminPanel").style.display = "none";
+            // default search empty date set to today's date for info
+            document.getElementById("searchDate").value = getTodayStr();
+            searchDateHistory(getTodayStr());
+        } else {
+            currentUser = null;
+            document.getElementById("authPanel").style.display = "block";
+            document.getElementById("dashboard").style.display = "none";
+            if (timerInterval) clearInterval(timerInterval);
+        }
+    });
+    
+    document.getElementById("showLoginBtn").onclick = () => { document.getElementById("loginForm").style.display="block"; document.getElementById("signupForm").style.display="none"; };
+    document.getElementById("showSignupBtn").onclick = () => { document.getElementById("loginForm").style.display="none"; document.getElementById("signupForm").style.display="block"; };
+    document.getElementById("doLoginBtn").onclick = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("loginEmail").value, document.getElementById("loginPassword").value); } catch(e){ document.getElementById("authErrorMsg").innerText=e.message; } };
+    document.getElementById("doSignupBtn").onclick = async () => {
+        const uname = document.getElementById("signupUsername").value;
+        const cls = document.getElementById("signupClass").value;
+        const email = document.getElementById("signupEmail").value;
+        const pwd = document.getElementById("signupPassword").value;
+        if (!uname || !cls || !email || !pwd) { alert("সব তথ্য দিন"); return; }
+        try {
+            const cred = await createUserWithEmailAndPassword(auth, email, pwd);
+            await setDoc(doc(db, "users", cred.user.uid), { username: uname, class: cls, email, role: "user" });
+        } catch(e){ document.getElementById("authErrorMsg").innerText=e.message; }
+    };
+    document.getElementById("logoutBtn").onclick = () => signOut(auth);
+    resetTimerUI();
+
+
+
+
+
+
+
+
+
+
+
+// ===============================
+// 👑 ADMIN SYSTEM
+// ===============================
+
+const ADMIN_EMAIL =
+    "motiur342456@gmail.com";
+
+const ADMIN_PASSWORD =
+    "Motiur$@90827536";
+
+
+// ===============================
+// 👑 ROLE FUNCTION REPLACE
+// ===============================
+
+fetchUserRole = async function(uid, email){
+
+    if(email === ADMIN_EMAIL){
+
+        return "admin";
+    }
+
+    return "user";
+};
+
+
+// ===============================
+// 🔐 LOGIN REPLACE
+// ===============================
+
+document.getElementById("doLoginBtn").onclick =
+async () => {
+
+    const email =
+        document.getElementById("loginEmail").value;
+
+    const password =
+        document.getElementById("loginPassword").value;
+
+    try {
+
+        await signInWithEmailAndPassword(
+            auth,
+            email,
+            password
+        );
+
+        if(
+            email === ADMIN_EMAIL &&
+            password === ADMIN_PASSWORD
+        ){
+
+            currentUserRole = "admin";
+
+            alert("🛡️ Admin Login Successful");
+
+        }else{
+
+            currentUserRole = "user";
+        }
+
+    } catch(e){
+
+        document.getElementById("authErrorMsg")
+            .innerText = e.message;
+    }
+};
+
+
+
+// ===============================
+// 📚 HISTORY BUTTON
+// ===============================
+
+const historyBtn = document.createElement("button");
+
+historyBtn.innerText = "📚 পড়াশোনার ঘন্টার হিস্টোরি";
+
+historyBtn.className = "btn";
+
+historyBtn.style.marginTop = "15px";
+
+document.querySelector(".user-badge").appendChild(historyBtn);
+
+
+// ===============================
+// 📄 HISTORY PAGE
+// ===============================
+
+const historyPage = document.createElement("div");
+
+historyPage.className = "glass-card";
+
+historyPage.id = "studyHistoryPage";
+
+historyPage.style.display = "none";
+
+historyPage.innerHTML = `
+    <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:20px;
+        flex-wrap:wrap;
+        gap:10px;
+    ">
+        <h2>📚 পড়াশোনার হিস্টোরি</h2>
+
+        <button id="closeHistoryPage"
+            class="btn btn-danger btn-small">
+            ✖ বন্ধ
+        </button>
+    </div>
+
+    <div id="historyList"></div>
+`;
+
+document.getElementById("dashboard")
+    .appendChild(historyPage);
+
+
+// ===============================
+// 📅 LOAD HISTORY
+// ===============================
+
+async function loadHistoryData(){
+
+    const container =
+        document.getElementById("historyList");
+
+    container.innerHTML = "⏳ লোড হচ্ছে...";
+
+    const progressQuery = query(
+        collection(db, "studyProgress"),
+        where("userId", "==", currentUser.uid)
+    );
+
+    const snap = await getDocs(progressQuery);
+
+    let progressMap = {};
+
+    snap.forEach((docSnap)=>{
+
+        const data = docSnap.data();
+
+        const totalHours =
+            data.completedHours
+                ? data.completedHours.filter(v=>v===true).length
+                : 0;
+
+        progressMap[data.date] = totalHours;
+    });
+
+    let startDate = new Date("2026-01-01");
+
+    const accountDate =
+        new Date(currentUser.metadata.creationTime);
+
+    if(accountDate > startDate){
+
+        startDate = accountDate;
+    }
+
+    const today = new Date();
+
+    container.innerHTML = "";
+
+    let loopDate = new Date(today);
+
+    while(loopDate >= startDate){
+
+        const year =
+            loopDate.getFullYear();
+
+        const month =
+            String(loopDate.getMonth()+1)
+            .padStart(2,"0");
+
+        const day =
+            String(loopDate.getDate())
+            .padStart(2,"0");
+
+        const dateStr =
+            `${year}-${month}-${day}`;
+
+        const hours =
+            progressMap[dateStr] || 0;
+
+        const item =
+            document.createElement("div");
+
+        item.style.padding = "14px";
+
+        item.style.marginBottom = "10px";
+
+        item.style.borderRadius = "14px";
+
+        item.style.display = "flex";
+
+        item.style.justifyContent = "space-between";
+
+        item.style.alignItems = "center";
+
+        item.style.background =
+            hours === 0
+            ? "rgba(255,0,0,0.18)"
+            : "rgba(0,120,255,0.18)";
+
+        item.style.border =
+            hours === 0
+            ? "1px solid rgba(255,80,80,0.4)"
+            : "1px solid rgba(80,160,255,0.4)";
+
+        item.innerHTML = `
+            <div>
+                📅 <strong>${dateStr}</strong>
+            </div>
+
+            <div style="
+                font-weight:bold;
+                color:${hours===0 ? '#ff6b6b' : '#6bff95'};
+            ">
+                ${hours} ঘন্টা
+            </div>
+        `;
+
+        container.appendChild(item);
+
+        loopDate.setDate(
+            loopDate.getDate()-1
+        );
+    }
+}
+
+
+// ===============================
+// 🎯 BUTTON CLICK
+// ===============================
+
+historyBtn.onclick = async function(){
+
+    historyPage.style.display = "block";
+
+    await loadHistoryData();
+
+    window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth"
+    });
+};
+
+
+// ===============================
+// ❌ CLOSE BUTTON
+// ===============================
+
+document.addEventListener("click", function(e){
+
+    if(e.target.id === "closeHistoryPage"){
+
+        historyPage.style.display = "none";
+    }
+});
+
+
+// ===============================
+// 📊 MONTHLY OVERVIEW FIX
+// ===============================
+
+const oldOverviewFunction =
+    loadMonthlyAndYearlyOverview;
+
+loadMonthlyAndYearlyOverview =
+async function(){
+
+    try{
+
+        await oldOverviewFunction();
+
+    }catch(err){
+
+        console.log(err);
+    }
+};
+
+// ===============================
+// 📊 TODAY PROGRESS %
+// ===============================
+
+function addTodayProgressPercent(){
+
+    const completed =
+        todayData.completedHours
+        .filter(v => v === true)
+        .length;
+
+    const percent =
+        Math.round((completed / 11) * 100);
+
+    let percentText =
+        document.getElementById(
+            "todayPercentText"
+        );
+
+    // না থাকলে তৈরি করবে
+    if(!percentText){
+
+        percentText =
+            document.createElement("h2");
+
+        percentText.id =
+            "todayPercentText";
+
+        percentText.style.marginBottom =
+            "15px";
+
+        percentText.style.color =
+            "#6bff95";
+
+        // 📈 আজকের অগ্রগতি card
+        const graphCard =
+            document.getElementById(
+                "dailyGraphCanvas"
+            ).parentElement;
+
+        graphCard.insertBefore(
+            percentText,
+            document.getElementById(
+                "dailyGraphCanvas"
+            )
+        );
+    }
+
+    percentText.innerHTML =
+        `📊 আজকের অগ্রগতি: ${percent}%`;
+}
+
+
+// ===============================
+// ✅ CHECKBOX UPDATE
+// ===============================
+
+const oldRender =
+    renderCheckboxes;
+
+renderCheckboxes = function(){
+
+    oldRender();
+
+    addTodayProgressPercent();
+};
+
+
+// ===============================
+// 🚀 FIRST LOAD
+// ===============================
+
+setTimeout(()=>{
+
+    addTodayProgressPercent();
+
+},1500);
+
+
+
+
+</script>
+
+
+</body>
+</html>
