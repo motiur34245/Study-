@@ -2692,6 +2692,108 @@ if(
 
 },1000);
 
+ // ===============================
+// 🚀 FINAL GRAPH BUTTON FIX
+// ✅ বারবার graph open হবে
+// ✅ close করলে আগের জায়গায় যাবে
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+// আগের onclick remove
+monthGraphBtn.onclick = null;
+
+let previousScroll = 0;
+
+
+// ===============================
+// 📈 OPEN GRAPH
+// ===============================
+
+monthGraphBtn.addEventListener(
+"click",
+async function(){
+
+    // আগের scroll save
+    previousScroll =
+    window.scrollY;
+
+    // graph show
+    graphPage.style.display =
+    "block";
+
+    // current month auto select
+    const now =
+    new Date();
+
+    const currentMonth =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+    const monthInput =
+    document.getElementById(
+        "graphMonthInput"
+    );
+
+    if(monthInput){
+
+        monthInput.value =
+        currentMonth;
+    }
+
+    // graph load
+    await loadMonthlyGraph(
+        currentMonth
+    );
+
+    // scroll to graph
+    setTimeout(()=>{
+
+        graphPage.scrollIntoView({
+
+            behavior:"smooth",
+
+            block:"start"
+        });
+
+    },300);
+});
+
+
+// ===============================
+// ❌ CLOSE GRAPH
+// ===============================
+
+document.addEventListener(
+"click",
+function(e){
+
+if(
+    e.target.id ===
+    "closeMonthGraph"
+){
+
+    // শুধু hide
+    graphPage.style.display =
+    "none";
+
+    // আগের জায়গায় ফেরত
+    setTimeout(()=>{
+
+        window.scrollTo({
+
+            top:previousScroll,
+
+            behavior:"smooth"
+        });
+
+    },300);
+}
+});
+
+},1000);
+
 
 
 </script>
