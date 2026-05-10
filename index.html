@@ -2692,7 +2692,7 @@ if(
 
 },1000);
 
- // ===============================
+// ===============================
 // 🚀 FINAL GRAPH BUTTON FIX
 // ✅ বারবার graph open হবে
 // ✅ close করলে আগের জায়গায় যাবে
@@ -2791,6 +2791,1566 @@ if(
     },300);
 }
 });
+
+},1000);
+
+
+
+// ===============================
+// 🕒 Y AXIS 24 HOURS MARKS FIX
+// ✅ ০ থেকে ২৪ পর্যন্ত দাগ দেখাবে
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+function add24HourMarks(){
+
+    const chart =
+    Chart.getChart(
+        "monthlyStudyChart"
+    );
+
+    if(!chart) return;
+
+    // ===========================
+    // 🕒 Y AXIS FULL MARKS
+    // ===========================
+
+    chart.options.scales.y = {
+
+        beginAtZero:true,
+
+        min:0,
+
+        max:24,
+
+        ticks:{
+
+            stepSize:1,
+
+            autoSkip:false,
+
+            color:"white",
+
+            font:{
+                size:13
+            },
+
+            callback:function(value){
+
+                return value;
+            }
+        },
+
+        grid:{
+
+            display:true,
+
+            color:
+            "rgba(255,255,255,0.12)"
+        },
+
+        title:{
+
+            display:true,
+
+            text:"ঘন্টা (০ - ২৪)",
+
+            color:"white",
+
+            font:{
+                size:16
+            }
+        }
+    };
+
+    chart.update();
+}
+
+
+// ===============================
+// 🔄 AUTO APPLY
+// ===============================
+
+setInterval(()=>{
+
+    add24HourMarks();
+
+},800);
+
+},1000);
+
+
+
+// ===============================
+// ❌ CLOSE BUTTON FINAL FIX
+// ✅ close button আবার কাজ করবে
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+document.addEventListener(
+"click",
+function(e){
+
+// ❌ close button
+if(
+    e.target.id ===
+    "closeMonthGraph"
+){
+
+    // graph hide
+    const graphPage =
+    document.getElementById(
+        "monthGraphPage"
+    );
+
+    if(graphPage){
+
+        graphPage.style.display =
+        "none";
+    }
+
+    // smooth back scroll
+    window.scrollTo({
+
+        top:0,
+
+        behavior:"smooth"
+    });
+}
+});
+
+},1000);
+
+
+
+// =======================================
+// 🚀 EXTRA 10 HOURS FULL SYSTEM
+// ✅ create + save + load + progress
+// =======================================
+
+setTimeout(() => {
+
+    // duplicate stop
+    if(window.extra10FullLoaded) return;
+
+    window.extra10FullLoaded = true;
+
+    // =========================
+    // 📦 TARGET CARD
+    // =========================
+
+    const cards =
+    document.querySelectorAll(".glass-card");
+
+    let targetCard = null;
+
+    cards.forEach(card => {
+
+        if(
+            card.innerText.includes("আজকের চ্যালেঞ্জ")
+        ){
+
+            targetCard = card;
+        }
+    });
+
+    if(!targetCard) return;
+
+    // =========================
+    // 📦 CREATE EXTRA BOX
+    // =========================
+
+    const extraBox =
+    document.createElement("div");
+
+    extraBox.id =
+    "extra10HoursBox";
+
+    extraBox.style.marginTop =
+    "25px";
+
+    extraBox.innerHTML = `
+
+        <h3 style="
+            color:#67e8ff;
+            margin-bottom:15px;
+        ">
+        ⚡ এক্সট্রা ১০ ঘন্টা
+        </h3>
+
+        <div
+            id="extraHoursGrid"
+            style="
+                display:grid;
+                grid-template-columns:
+                repeat(auto-fill,minmax(90px,1fr));
+                gap:10px;
+            ">
+        </div>
+    `;
+
+    targetCard.appendChild(
+        extraBox
+    );
+
+    // =========================
+    // 🕒 CREATE 10 CHECKBOX
+    // =========================
+
+    const grid =
+    document.getElementById(
+        "extraHoursGrid"
+    );
+
+    for(let i=1; i<=10; i++){
+
+        const item =
+        document.createElement("div");
+
+        item.className =
+        "hour-card";
+
+        item.innerHTML = `
+
+            <label>
+
+                <span>
+                ⚡ ঘন্টা ${i}
+                </span>
+
+                <input
+                    type="checkbox"
+                    class="extraHourCheck"
+                    data-index="${i-1}"
+                >
+
+                <span>
+                ◻️
+                </span>
+
+            </label>
+        `;
+
+        grid.appendChild(item);
+    }
+
+
+    // =========================
+    // 💾 SAVE FIREBASE
+    // =========================
+
+    async function saveExtraHours(){
+
+        if(!currentUser) return;
+
+        const arr = [];
+
+        document
+        .querySelectorAll(".extraHourCheck")
+        .forEach(check => {
+
+            arr.push(
+                check.checked
+            );
+        });
+
+        const ref =
+        doc(
+            db,
+            "studyProgress",
+            `${currentUser.uid}_${todayDateStr}`
+        );
+
+        await setDoc(
+            ref,
+            {
+                extraHours: arr
+            },
+            {
+                merge:true
+            }
+        );
+
+        updateExtraUI();
+    }
+
+
+    // =========================
+    // 📂 LOAD FIREBASE
+    // =========================
+
+    async function loadExtraHours(){
+
+        if(!currentUser) return;
+
+        const ref =
+        doc(
+            db,
+            "studyProgress",
+            `${currentUser.uid}_${todayDateStr}`
+        );
+
+        const snap =
+        await getDoc(ref);
+
+        let arr =
+        new Array(10).fill(false);
+
+        if(
+            snap.exists() &&
+            snap.data().extraHours
+        ){
+
+            arr =
+            snap.data().extraHours;
+        }
+
+        document
+        .querySelectorAll(".extraHourCheck")
+        .forEach((check,index)=>{
+
+            check.checked =
+            arr[index] || false;
+        });
+
+        updateExtraUI();
+    }
+
+
+    // =========================
+    // 📊 UPDATE UI
+    // =========================
+
+    function updateExtraUI(){
+
+        const normalHours =
+        todayData.completedHours
+        ? todayData.completedHours
+        .filter(v=>v===true)
+        .length
+        : 0;
+
+        const extraHours =
+        [...document.querySelectorAll(
+            ".extraHourCheck"
+        )]
+        .filter(v=>v.checked)
+        .length;
+
+        const total =
+        normalHours + extraHours;
+
+        // total text
+        const count =
+        document.getElementById(
+            "completedCount"
+        );
+
+        if(count){
+
+            count.innerText =
+            total;
+        }
+
+        // progress
+        const fill =
+        document.getElementById(
+            "dailyProgressFill"
+        );
+
+        const percent =
+        Math.round(
+            (total / 21) * 100
+        );
+
+        if(fill){
+
+            fill.style.width =
+            percent + "%";
+
+            fill.innerText =
+            percent + "%";
+        }
+
+        // title
+        const title =
+        targetCard.querySelector("h3");
+
+        if(title){
+
+            title.innerHTML =
+            `📅 আজকের চ্যালেঞ্জ:
+            <span id="todayDate">
+            ${todayDateStr}
+            </span>
+            | 🎯 ২১ ঘন্টা`;
+        }
+    }
+
+
+    // =========================
+    // 🎯 EVENT
+    // =========================
+
+    document
+    .querySelectorAll(".extraHourCheck")
+    .forEach(check => {
+
+        check.addEventListener(
+            "change",
+            saveExtraHours
+        );
+    });
+
+
+    // =========================
+    // 🚀 FIRST LOAD
+    // =========================
+
+    setTimeout(() => {
+
+        loadExtraHours();
+
+    },1000);
+
+},2500);
+
+
+
+// ======================================
+// 🚀 EXTRA HOURS FULL TOTAL FIX
+// ✅ Main + Extra hour together
+// ======================================
+
+setTimeout(() => {
+
+    // ============================
+    // 🧠 TOTAL HOURS FUNCTION
+    // ============================
+
+    function getTotalHours(data){
+
+        let normal = 0;
+        let extra = 0;
+
+        // Main 11 hours
+        if(
+            data.completedHours &&
+            Array.isArray(data.completedHours)
+        ){
+
+            normal =
+            data.completedHours
+            .filter(v => v === true)
+            .length;
+        }
+
+        // Extra 10 hours
+        if(
+            data.extraHours &&
+            Array.isArray(data.extraHours)
+        ){
+
+            extra =
+            data.extraHours
+            .filter(v => v === true)
+            .length;
+        }
+
+        return normal + extra;
+    }
+
+
+    // ============================
+    // 📊 DAILY UI UPDATE
+    // ============================
+
+    const oldRenderCheckboxes =
+    renderCheckboxes;
+
+    renderCheckboxes = function(){
+
+        oldRenderCheckboxes();
+
+        const total =
+        getTotalHours(todayData);
+
+        // count
+        const count =
+        document.getElementById(
+            "completedCount"
+        );
+
+        if(count){
+
+            count.innerText =
+            total;
+        }
+
+        // progress
+        const fill =
+        document.getElementById(
+            "dailyProgressFill"
+        );
+
+        const percent =
+        Math.round(
+            (total / 21) * 100
+        );
+
+        if(fill){
+
+            fill.style.width =
+            percent + "%";
+
+            fill.innerText =
+            percent + "%";
+        }
+    };
+
+
+    // ============================
+    // 📈 MONTH + YEAR FIX
+    // ============================
+
+    loadMonthlyAndYearlyOverview =
+    async function(){
+
+        if(!currentUser) return;
+
+        const now =
+        new Date();
+
+        const currentYear =
+        now.getFullYear();
+
+        const currentMonth =
+        now.getMonth();
+
+        document.getElementById(
+            "currentMonthName"
+        ).innerText =
+        now.toLocaleString(
+            'default',
+            {
+                month:'long'
+            }
+        );
+
+        document.getElementById(
+            "currentYear"
+        ).innerText =
+        currentYear;
+
+        const progressQuery =
+        query(
+            collection(
+                db,
+                "studyProgress"
+            ),
+            where(
+                "userId",
+                "==",
+                currentUser.uid
+            )
+        );
+
+        const snap =
+        await getDocs(
+            progressQuery
+        );
+
+        let monthlyHours = 0;
+
+        let activeDays = 0;
+
+        let yearlyData =
+        new Array(12).fill(0);
+
+        snap.forEach(docSn => {
+
+            const data =
+            docSn.data();
+
+            const dateStr =
+            data.date;
+
+            if(!dateStr) return;
+
+            const [
+                year,
+                month
+            ] =
+            dateStr
+            .split('-')
+            .map(Number);
+
+            if(
+                year === currentYear
+            ){
+
+                const total =
+                getTotalHours(data);
+
+                yearlyData[
+                    month - 1
+                ] += total;
+
+                if(
+                    month - 1 ===
+                    currentMonth
+                ){
+
+                    monthlyHours += total;
+
+                    activeDays++;
+                }
+            }
+        });
+
+        // UI
+        document.getElementById(
+            "monthTotalHours"
+        ).innerText =
+        monthlyHours;
+
+        document.getElementById(
+            "monthAvgHours"
+        ).innerText =
+        activeDays
+        ? (
+            monthlyHours /
+            activeDays
+        ).toFixed(1)
+        : "0";
+
+        document.getElementById(
+            "monthActiveDays"
+        ).innerText =
+        activeDays;
+
+        const totalYear =
+        yearlyData.reduce(
+            (a,b)=>a+b,
+            0
+        );
+
+        document.getElementById(
+            "yearTotalHours"
+        ).innerText =
+        totalYear;
+
+        document.getElementById(
+            "yearAvgMonth"
+        ).innerText =
+        (
+            totalYear / 12
+        ).toFixed(1);
+
+
+        // ======================
+        // 📊 YEAR GRAPH
+        // ======================
+
+        const ctx =
+        document
+        .getElementById(
+            'yearlyChartCanvas'
+        )
+        ?.getContext('2d');
+
+        if(ctx){
+
+            if(window.yearlyChart){
+
+                window.yearlyChart.destroy();
+            }
+
+            window.yearlyChart =
+            new Chart(ctx, {
+
+                type:'bar',
+
+                data:{
+
+                    labels:[
+                        'জানু',
+                        'ফেব্রু',
+                        'মার্চ',
+                        'এপ্রি',
+                        'মে',
+                        'জুন',
+                        'জুলাই',
+                        'আগ',
+                        'সেপ্ট',
+                        'অক্টো',
+                        'নভে',
+                        'ডিসে'
+                    ],
+
+                    datasets:[{
+
+                        label:'মোট ঘন্টা',
+
+                        data:yearlyData,
+
+                        backgroundColor:'#3a6eff',
+
+                        borderRadius:8
+                    }]
+                },
+
+                options:{
+
+                    responsive:true,
+
+                    scales:{
+
+                        y:{
+
+                            beginAtZero:true
+                        }
+                    }
+                }
+            });
+        }
+    };
+
+
+    // ============================
+    // 📚 HISTORY FIX
+    // ============================
+
+    const oldHistory =
+    loadHistoryData;
+
+    loadHistoryData =
+    async function(){
+
+        const container =
+        document.getElementById(
+            "historyList"
+        );
+
+        container.innerHTML =
+        "⏳ লোড হচ্ছে...";
+
+        const progressQuery =
+        query(
+            collection(
+                db,
+                "studyProgress"
+            ),
+            where(
+                "userId",
+                "==",
+                currentUser.uid
+            )
+        );
+
+        const snap =
+        await getDocs(
+            progressQuery
+        );
+
+        let progressMap = {};
+
+        snap.forEach(docSnap => {
+
+            const data =
+            docSnap.data();
+
+            progressMap[
+                data.date
+            ] =
+            getTotalHours(data);
+        });
+
+        const today =
+        new Date();
+
+        const startDate =
+        new Date("2026-01-01");
+
+        container.innerHTML = "";
+
+        let loopDate =
+        new Date(today);
+
+        while(
+            loopDate >= startDate
+        ){
+
+            const year =
+            loopDate.getFullYear();
+
+            const month =
+            String(
+                loopDate.getMonth()+1
+            ).padStart(2,"0");
+
+            const day =
+            String(
+                loopDate.getDate()
+            ).padStart(2,"0");
+
+            const dateStr =
+            `${year}-${month}-${day}`;
+
+            const hours =
+            progressMap[
+                dateStr
+            ] || 0;
+
+            const item =
+            document.createElement("div");
+
+            item.style.padding =
+            "14px";
+
+            item.style.marginBottom =
+            "10px";
+
+            item.style.borderRadius =
+            "14px";
+
+            item.style.display =
+            "flex";
+
+            item.style.justifyContent =
+            "space-between";
+
+            item.style.alignItems =
+            "center";
+
+            item.style.background =
+            "rgba(0,120,255,0.15)";
+
+            item.innerHTML = `
+
+                <div>
+                    📅
+                    <strong>
+                    ${dateStr}
+                    </strong>
+                </div>
+
+                <div style="
+                    color:#6bff95;
+                    font-weight:bold;
+                ">
+                    ${hours} ঘন্টা
+                </div>
+            `;
+
+            container.appendChild(
+                item
+            );
+
+            loopDate.setDate(
+                loopDate.getDate()-1
+            );
+        }
+    };
+
+
+    // ============================
+    // 🚀 AUTO REFRESH
+    // ============================
+
+    setTimeout(() => {
+
+        renderCheckboxes();
+
+        loadMonthlyAndYearlyOverview();
+
+    },1000);
+
+},3000);
+
+
+// ==========================================
+// 🚀 FINAL MASTER GRAPH FIX
+// ✅ EXTRA HOURS + MAIN HOURS
+// ==========================================
+
+window.addEventListener("load", () => {
+
+setTimeout(() => {
+
+    // ======================================
+    // 🧠 TOTAL HOURS FUNCTION
+    // ======================================
+
+    function getTotalHours(data){
+
+        const normal =
+            Array.isArray(data.completedHours)
+            ? data.completedHours.filter(v=>v).length
+            : 0;
+
+        const extra =
+            Array.isArray(data.extraHours)
+            ? data.extraHours.filter(v=>v).length
+            : 0;
+
+        return normal + extra;
+    }
+
+    // ======================================
+    // 📈 FORCE CREATE GRAPH
+    // ======================================
+
+    async function forceCreateMonthlyGraph(monthValue){
+
+        const canvas =
+        document.getElementById(
+            "monthlyStudyChart"
+        );
+
+        if(!canvas){
+
+            alert("Graph Canvas পাওয়া যায়নি");
+            return;
+        }
+
+        // old chart destroy
+        const oldChart =
+        Chart.getChart(canvas);
+
+        if(oldChart){
+
+            oldChart.destroy();
+        }
+
+        const ctx =
+        canvas.getContext("2d");
+
+        // ==================================
+        // 🔥 FIREBASE LOAD
+        // ==================================
+
+        const q1 =
+        query(
+            collection(
+                db,
+                "studyProgress"
+            ),
+            where(
+                "userId",
+                "==",
+                currentUser.uid
+            )
+        );
+
+        const snap =
+        await getDocs(q1);
+
+        const [year, month] =
+        monthValue.split("-");
+
+        const daysInMonth =
+        new Date(
+            Number(year),
+            Number(month),
+            0
+        ).getDate();
+
+        let graphData = [];
+
+        // ==================================
+        // 📅 LOOP DAYS
+        // ==================================
+
+        for(
+            let day=1;
+            day<=daysInMonth;
+            day++
+        ){
+
+            const dateStr =
+            `${year}-${month}-${String(day).padStart(2,"0")}`;
+
+            let totalHours = 0;
+
+            snap.forEach(docSnap => {
+
+                const data =
+                docSnap.data();
+
+                if(
+                    data.date === dateStr
+                ){
+
+                    totalHours =
+                    getTotalHours(data);
+                }
+            });
+
+            graphData.push(
+                totalHours
+            );
+        }
+
+        // ==================================
+        // 📊 CREATE NEW GRAPH
+        // ==================================
+
+        window.realMonthlyChart =
+        new Chart(ctx, {
+
+            type: "line",
+
+            data: {
+
+                labels:
+                Array.from(
+                    {
+                        length: daysInMonth
+                    },
+                    (_,i)=>i+1
+                ),
+
+                datasets: [{
+
+                    label:
+                    "২১ ঘন্টার মোট স্টাডি",
+
+                    data:
+                    graphData,
+
+                    borderColor:
+                    "#67e8ff",
+
+                    backgroundColor:
+                    "rgba(103,232,255,0.18)",
+
+                    borderWidth: 5,
+
+                    tension: 0.4,
+
+                    pointRadius: 5,
+
+                    pointHoverRadius: 8,
+
+                    fill: false
+                }]
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                plugins: {
+
+                    legend: {
+
+                        labels: {
+
+                            color: "white",
+
+                            font: {
+
+                                size: 16
+                            }
+                        }
+                    }
+                },
+
+                scales: {
+
+                    x: {
+
+                        ticks: {
+
+                            color: "white"
+                        },
+
+                        grid: {
+
+                            color:
+                            "rgba(255,255,255,0.08)"
+                        }
+                    },
+
+                    y: {
+
+                        beginAtZero: true,
+
+                        min: 0,
+
+                        max: 24,
+
+                        ticks: {
+
+                            stepSize: 1,
+
+                            autoSkip: false,
+
+                            color: "white"
+                        },
+
+                        grid: {
+
+                            color:
+                            "rgba(255,255,255,0.08)"
+                        },
+
+                        title: {
+
+                            display: true,
+
+                            text:
+                            "মোট ঘন্টা",
+
+                            color: "white"
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log(
+            "✅ FINAL GRAPH CREATED"
+        );
+    }
+
+    // ======================================
+    // 🔄 BUTTON FORCE
+    // ======================================
+
+    document.addEventListener(
+    "click",
+    async function(e){
+
+        // graph open button
+        if(
+            e.target.innerText.includes(
+                "গ্রাফ দেখুন"
+            )
+        ){
+
+            setTimeout(async () => {
+
+                const monthInput =
+                document.getElementById(
+                    "graphMonthInput"
+                );
+
+                if(monthInput){
+
+                    await forceCreateMonthlyGraph(
+                        monthInput.value
+                    );
+                }
+
+            },800);
+        }
+
+        // search graph button
+        if(
+            e.target.id ===
+            "loadMonthGraphBtn"
+        ){
+
+            const month =
+            document.getElementById(
+                "graphMonthInput"
+            ).value;
+
+            if(month){
+
+                await forceCreateMonthlyGraph(
+                    month
+                );
+            }
+        }
+    });
+
+    console.log(
+        "✅ MASTER GRAPH FIX READY"
+    );
+
+},6000);
+
+});
+
+
+
+// ======================================
+// 🔒 EXTRA 10 HOURS LOCK SYSTEM
+// ✅ Unlock after 11/11 complete
+// ======================================
+
+setTimeout(() => {
+
+    // duplicate stop
+    if(window.extraHoursLockLoaded) return;
+
+    window.extraHoursLockLoaded = true;
+
+    // ==================================
+    // 🔒 CREATE LOCK MESSAGE
+    // ==================================
+
+    const extraBox =
+    document.getElementById(
+        "extra10HoursBox"
+    );
+
+    if(!extraBox) return;
+
+    const lockText =
+    document.createElement("div");
+
+    lockText.id =
+    "extraHoursLockText";
+
+    lockText.style.marginBottom =
+    "15px";
+
+    lockText.style.padding =
+    "12px";
+
+    lockText.style.borderRadius =
+    "12px";
+
+    lockText.style.background =
+    "rgba(255,80,80,0.15)";
+
+    lockText.style.color =
+    "#ff8f8f";
+
+    lockText.style.fontWeight =
+    "bold";
+
+    lockText.style.textAlign =
+    "center";
+
+    lockText.innerHTML =
+    "🔒 আগে মূল ১১ ঘন্টা সম্পন্ন করুন";
+
+    extraBox.insertBefore(
+        lockText,
+        extraBox.children[1]
+    );
+
+    // ==================================
+    // 🔄 LOCK UPDATE FUNCTION
+    // ==================================
+
+    function updateExtraHoursLock(){
+
+        // main completed
+        const completed =
+        todayData.completedHours
+        ? todayData.completedHours
+            .filter(v => v === true)
+            .length
+        : 0;
+
+        const checks =
+        document.querySelectorAll(
+            ".extraHourCheck"
+        );
+
+        const grid =
+        document.getElementById(
+            "extraHoursGrid"
+        );
+
+        // ===============================
+        // 🔒 LOCK MODE
+        // ===============================
+
+        if(completed < 11){
+
+            checks.forEach(check => {
+
+                check.disabled = true;
+            });
+
+            if(grid){
+
+                grid.style.opacity =
+                "0.4";
+
+                grid.style.pointerEvents =
+                "none";
+
+                grid.style.filter =
+                "blur(1px)";
+            }
+
+            lockText.style.display =
+            "block";
+
+            lockText.innerHTML =
+            `🔒 ${completed}/11 ঘন্টা সম্পন্ন হয়েছে — Extra 10 Hours Locked`;
+
+        }
+
+        // ===============================
+        // 🔓 UNLOCK MODE
+        // ===============================
+
+        else{
+
+            checks.forEach(check => {
+
+                check.disabled = false;
+            });
+
+            if(grid){
+
+                grid.style.opacity =
+                "1";
+
+                grid.style.pointerEvents =
+                "auto";
+
+                grid.style.filter =
+                "none";
+            }
+
+            lockText.style.display =
+            "block";
+
+            lockText.style.background =
+            "rgba(80,255,120,0.15)";
+
+            lockText.style.color =
+            "#6bff95";
+
+            lockText.innerHTML =
+            "🔓 Extra 10 Hours Unlocked";
+        }
+    }
+
+    // ==================================
+    // 🔄 AUTO CHECK
+    // ==================================
+
+    setInterval(() => {
+
+        updateExtraHoursLock();
+
+    },1000);
+
+    // first load
+    updateExtraHoursLock();
+
+},4000);
+
+
+// ======================================
+// 🕌 TOP ISLAMIC AYAH BAR
+// ✅ Arabic + Bangla + Meaning
+// ======================================
+
+setTimeout(() => {
+
+    // duplicate stop
+    if(window.topAyahSystemLoaded) return;
+
+    window.topAyahSystemLoaded = true;
+
+    // ==================================
+    // 📚 ১০টি আয়াত
+    // ==================================
+
+    const ayahs = [
+
+        {
+            ar:"رَبِّ زِدْنِي عِلْمًا",
+            bn:"রব্বি জিদনী ইলমা",
+            meaning:"হে আমার রব! আমার জ্ঞান বৃদ্ধি করুন।"
+        },
+
+        {
+            ar:"اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ",
+            bn:"ইকরা বিসমি রব্বিকাল্লাযী খালাক",
+            meaning:"পড়ুন আপনার রবের নামে যিনি সৃষ্টি করেছেন।"
+        },
+
+        {
+            ar:"هَلْ يَسْتَوِي الَّذِينَ يَعْلَمُونَ وَالَّذِينَ لَا يَعْلَمُونَ",
+            bn:"হাল ইয়াস্তাউইল্লাযীনা ইয়ালামূনা ওয়াল্লাযীনা লা ইয়ালামূন",
+            meaning:"যারা জানে এবং যারা জানে না তারা কি সমান?"
+        },
+
+        {
+            ar:"وَقُل رَّبِّ زِدْنِي عِلْمًا",
+            bn:"ওয়া কুল রব্বি জিদনী ইলমা",
+            meaning:"বলুন, হে আমার রব! আমার জ্ঞান বৃদ্ধি করুন।"
+        },
+
+        {
+            ar:"إِنَّمَا يَخْشَى اللَّهَ مِنْ عِبَادِهِ الْعُلَمَاءُ",
+            bn:"ইন্নামা ইয়াখশাল্লাহা মিন ইবাদিহিল উলামা",
+            meaning:"আল্লাহকে তাঁর বান্দাদের মধ্যে আলেমরাই বেশি ভয় করে।"
+        },
+
+        {
+            ar:"وَفَوْقَ كُلِّ ذِي عِلْمٍ عَلِيمٌ",
+            bn:"ওয়া ফাওকা কুল্লি যি ইলমিন আলীম",
+            meaning:"প্রত্যেক জ্ঞানীর উপরে আরও জ্ঞানী আছেন।"
+        },
+
+        {
+            ar:"اللَّهُ يَرْفَعِ الَّذِينَ آمَنُوا مِنكُمْ وَالَّذِينَ أُوتُوا الْعِلْمَ دَرَجَاتٍ",
+            bn:"আল্লাহু ইয়ারফাইল্লাযীনা আমানু মিনকুম ওয়াল্লাযীনা উতুল ইলমা দারাজাত",
+            meaning:"আল্লাহ জ্ঞানীদের মর্যাদা বৃদ্ধি করেন।"
+        },
+
+        {
+            ar:"وَمَا أُوتِيتُم مِّنَ الْعِلْمِ إِلَّا قَلِيلًا",
+            bn:"ওয়া মা উতিতুম মিনাল ইলমি ইল্লা কলিলা",
+            meaning:"তোমাদেরকে অতি সামান্য জ্ঞানই দেওয়া হয়েছে।"
+        },
+
+        {
+            ar:"فَاسْأَلُوا أَهْلَ الذِّكْرِ إِن كُنتُمْ لَا تَعْلَمُونَ",
+            bn:"ফাসআলু আহলায যিকরি ইন কুনতুম লা তালামুন",
+            meaning:"যদি না জানো তবে জ্ঞানীদের জিজ্ঞাসা করো।"
+        },
+
+        {
+            ar:"يَرْفَعِ اللَّهُ الَّذِينَ آمَنُوا مِنكُمْ وَالَّذِينَ أُوتُوا الْعِلْمَ",
+            bn:"ইয়ারফাইল্লাহুল্লাযীনা আমানু মিনকুম ওয়াল্লাযীনা উতুল ইলম",
+            meaning:"আল্লাহ ঈমানদার ও জ্ঞানীদের মর্যাদা উঁচু করেন।"
+        }
+    ];
+
+    // ==================================
+    // 📦 TOP HEADER
+    // ==================================
+
+    const topBox =
+    document.createElement("div");
+
+    topBox.id =
+    "topIslamicAyahBar";
+
+    topBox.style.width =
+    "100%";
+
+    topBox.style.padding =
+    "22px";
+
+    topBox.style.marginBottom =
+    "20px";
+
+    topBox.style.borderRadius =
+    "25px";
+
+    topBox.style.textAlign =
+    "center";
+
+    topBox.style.background =
+    "linear-gradient(135deg,#07152f,#102b55)";
+
+    topBox.style.border =
+    "1px solid rgba(255,255,255,0.1)";
+
+    topBox.style.boxShadow =
+    "0 0 25px rgba(0,0,0,0.35)";
+
+    topBox.style.transition =
+    "0.5s";
+
+    // ==================================
+    // 📍 APP TOP
+    // ==================================
+
+    const app =
+    document.getElementById(
+        "appRoot"
+    );
+
+    if(app){
+
+        app.insertBefore(
+            topBox,
+            app.firstChild
+        );
+    }
+
+    // ==================================
+    // 🔄 CHANGE AYAH
+    // ==================================
+
+    let index = 0;
+
+    function showAyah(){
+
+        const ayah =
+        ayahs[index];
+
+        topBox.innerHTML = `
+
+            <div style="
+                font-size:42px;
+                color:#67e8ff;
+                margin-bottom:15px;
+                font-weight:bold;
+            ">
+                ﷽
+            </div>
+
+            <div style="
+                color:white;
+                font-size:32px;
+                line-height:2;
+                font-weight:bold;
+            ">
+                ${ayah.ar}
+            </div>
+
+            <div style="
+                margin-top:12px;
+                color:#ffd36b;
+                font-size:20px;
+                font-weight:bold;
+            ">
+                ${ayah.bn}
+            </div>
+
+            <div style="
+                margin-top:12px;
+                color:#d6e7ff;
+                font-size:17px;
+                line-height:1.8;
+            ">
+                ${ayah.meaning}
+            </div>
+        `;
+
+        index++;
+
+        if(index >= ayahs.length){
+
+            index = 0;
+        }
+    }
+
+    // প্রথম আয়াত
+    showAyah();
+
+    // প্রতি ১০ সেকেন্ডে পরিবর্তন
+    setInterval(() => {
+
+        showAyah();
+
+    },10000);
 
 },1000);
 
