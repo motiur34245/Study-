@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
@@ -1107,8 +1107,1595 @@ setTimeout(()=>{
 },1000);
 
 
+// ===============================
+// 📈 MONTH GRAPH SYSTEM
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসাবেন 👇
+
+setTimeout(()=>{
+
+// ===============================
+// 📊 BUTTON CREATE
+// ===============================
+
+const monthGraphBtn =
+    document.createElement("button");
+
+monthGraphBtn.innerText =
+    "📈 মাসের গ্রাফ দেখুন";
+
+monthGraphBtn.className =
+    "btn";
+
+monthGraphBtn.style.marginTop =
+    "15px";
+
+document.querySelector(".user-badge")
+.appendChild(monthGraphBtn);
+
+
+// ===============================
+// 📄 GRAPH PAGE
+// ===============================
+
+const graphPage =
+    document.createElement("div");
+
+graphPage.className =
+    "glass-card";
+
+graphPage.style.display =
+    "none";
+
+graphPage.id =
+    "monthGraphPage";
+
+graphPage.innerHTML = `
+
+    <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:10px;
+        margin-bottom:20px;
+    ">
+
+        <h2>
+            📈 মাসিক স্টাডি গ্রাফ
+        </h2>
+
+        <button
+            id="closeMonthGraph"
+            class="btn btn-danger btn-small">
+
+            ✖ বন্ধ
+
+        </button>
+
+    </div>
+
+
+    <div style="
+        display:flex;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-bottom:20px;
+    ">
+
+        <input
+            type="month"
+            id="graphMonthInput"
+            style="
+                padding:10px;
+                border-radius:10px;
+                background:#0f1a2f;
+                color:white;
+                border:none;
+            "
+        >
+
+        <button
+            id="loadMonthGraphBtn"
+            class="btn">
+
+            🔍 গ্রাফ দেখুন
+
+        </button>
+
+    </div>
+
+    <canvas
+        id="monthlyStudyChart"
+        height="120">
+    </canvas>
+`;
+
+document.getElementById("dashboard")
+.appendChild(graphPage);
+
+
+// ===============================
+// 📊 CHART VARIABLE
+// ===============================
+
+let monthlyStudyChart;
+
+
+// ===============================
+// 📈 LOAD GRAPH
+// ===============================
+
+async function loadMonthlyGraph(monthValue){
+
+    const ctx =
+        document.getElementById(
+            "monthlyStudyChart"
+        ).getContext("2d");
+
+    const progressQuery =
+        query(
+            collection(
+                db,
+                "studyProgress"
+            ),
+            where(
+                "userId",
+                "==",
+                currentUser.uid
+            )
+        );
+
+    const snap =
+        await getDocs(progressQuery);
+
+    const [year, month] =
+        monthValue.split("-");
+
+    const daysInMonth =
+        new Date(
+            year,
+            month,
+            0
+        ).getDate();
+
+    let graphData =
+        [];
+
+    for(
+        let day = 1;
+        day <= daysInMonth;
+        day++
+    ){
+
+        const dateStr =
+            `${year}-${month}-${String(day).padStart(2,"0")}`;
+
+        let totalHours = 0;
+
+        snap.forEach((docSnap)=>{
+
+            const data =
+                docSnap.data();
+
+            if(
+                data.date === dateStr
+            ){
+
+                totalHours =
+                    data.completedHours
+                    ? data.completedHours
+                    .filter(v=>v===true)
+                    .length
+                    : 0;
+            }
+        });
+
+        graphData.push(totalHours);
+    }
+
+    if(monthlyStudyChart){
+
+        monthlyStudyChart.destroy();
+    }
+
+    monthlyStudyChart =
+        new Chart(ctx, {
+
+        type: "line",
+
+        data: {
+
+            labels:
+                Array.from(
+                    {
+                        length: daysInMonth
+                    },
+                    (_,i)=>i+1
+                ),
+
+            datasets: [{
+
+                label:
+                    "Study Hours",
+
+                data:
+                    graphData,
+
+                borderColor:
+                    "#56d8ff",
+
+                backgroundColor:
+                    "rgba(86,216,255,0.2)",
+
+                borderWidth: 4,
+
+                tension: 0.3,
+
+                pointRadius: 5,
+
+                pointHoverRadius: 7,
+
+                fill: false
+            }]
+        },
+
+        options: {
+
+            responsive: true,
+
+            plugins: {
+
+                legend: {
+
+                    labels: {
+
+                        color: "white"
+                    }
+                }
+            },
+
+            scales: {
+
+                x: {
+
+                    ticks: {
+
+                        color: "white"
+                    }
+                },
+
+                y: {
+
+                    beginAtZero: true,
+
+                    ticks: {
+
+                        color: "white"
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+// ===============================
+// 🎯 BUTTON CLICK
+// ===============================
+
+monthGraphBtn.onclick =
+async function(){
+
+    graphPage.style.display =
+        "block";
+
+    const now =
+        new Date();
+
+    const currentMonth =
+        `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+    document.getElementById(
+        "graphMonthInput"
+    ).value = currentMonth;
+
+    await loadMonthlyGraph(
+        currentMonth
+    );
+
+    graphPage.scrollIntoView({
+
+        behavior: "smooth",
+
+        block: "start"
+    });
+};
+
+
+// ===============================
+// 🔍 SEARCH MONTH
+// ===============================
+
+document.addEventListener(
+"click",
+async function(e){
+
+    if(
+        e.target.id ===
+        "loadMonthGraphBtn"
+    ){
+
+        const month =
+            document.getElementById(
+                "graphMonthInput"
+            ).value;
+
+        if(!month){
+
+            alert(
+                "মাস নির্বাচন করুন"
+            );
+
+            return;
+        }
+
+        await loadMonthlyGraph(
+            month
+        );
+    }
+});
+
+
+// ===============================
+// ❌ CLOSE
+// ===============================
+
+document.addEventListener(
+"click",
+function(e){
+
+    if(
+        e.target.id ===
+        "closeMonthGraph"
+    ){
+
+        graphPage.style.display =
+            "none";
+    }
+});
+
+},1000);
+
+
+
+
+// ===============================
+// 📈 GRAPH ZOOM BOX SYSTEM
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+    // Chart click করলে zoom box
+    document.addEventListener("click", function(e){
+
+        // chart এ click
+        if(
+            e.target.id ===
+            "monthlyStudyChart"
+        ){
+
+            const oldBox =
+                document.getElementById(
+                    "graphZoomBox"
+                );
+
+            // আগের box remove
+            if(oldBox){
+
+                oldBox.remove();
+            }
+
+            // ===========================
+            // 📦 CREATE BOX
+            // ===========================
+
+            const zoomBox =
+                document.createElement("div");
+
+            zoomBox.id =
+                "graphZoomBox";
+
+            zoomBox.style.position =
+                "fixed";
+
+            zoomBox.style.top =
+                "50%";
+
+            zoomBox.style.left =
+                "50%";
+
+            zoomBox.style.transform =
+                "translate(-50%,-50%)";
+
+            zoomBox.style.width =
+                "95%";
+
+            zoomBox.style.maxWidth =
+                "900px";
+
+            zoomBox.style.height =
+                "420px";
+
+            zoomBox.style.background =
+                "#07152f";
+
+            zoomBox.style.border =
+                "2px solid #56d8ff";
+
+            zoomBox.style.borderRadius =
+                "25px";
+
+            zoomBox.style.padding =
+                "20px";
+
+            zoomBox.style.zIndex =
+                "999999";
+
+            zoomBox.style.boxShadow =
+                "0 0 30px rgba(0,0,0,0.7)";
+
+            zoomBox.innerHTML = `
+
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-bottom:20px;
+                ">
+
+                    <h2 style="
+                        color:white;
+                    ">
+                        📈 বড় গ্রাফ
+                    </h2>
+
+                    <button
+                        id="closeZoomGraph"
+                        style="
+                            border:none;
+                            background:#ff2f5e;
+                            color:white;
+                            padding:10px 18px;
+                            border-radius:15px;
+                            font-weight:bold;
+                            cursor:pointer;
+                        ">
+
+                        ✖ বন্ধ
+
+                    </button>
+
+                </div>
+
+                <canvas
+                    id="zoomChartCanvas"
+                    height="260">
+                </canvas>
+            `;
+
+            document.body.appendChild(
+                zoomBox
+            );
+
+            // ===========================
+            // 📊 OLD GRAPH DATA COPY
+            // ===========================
+
+            const oldChart =
+                Chart.getChart(
+                    "monthlyStudyChart"
+                );
+
+            if(!oldChart) return;
+
+            const ctx =
+                document.getElementById(
+                    "zoomChartCanvas"
+                ).getContext("2d");
+
+            new Chart(ctx, {
+
+                type: "line",
+
+                data: {
+
+                    labels:
+                        oldChart.data.labels,
+
+                    datasets: [{
+
+                        label:
+                            "Study Hours",
+
+                        data:
+                            oldChart.data
+                            .datasets[0]
+                            .data,
+
+                        borderColor:
+                            "#56d8ff",
+
+                        backgroundColor:
+                            "rgba(86,216,255,0.2)",
+
+                        borderWidth: 5,
+
+                        tension: 0.3,
+
+                        pointRadius: 7,
+
+                        pointHoverRadius: 10,
+
+                        fill: false
+                    }]
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    maintainAspectRatio:
+                        false,
+
+                    plugins: {
+
+                        legend: {
+
+                            labels: {
+
+                                color: "white",
+
+                                font: {
+
+                                    size: 18
+                                }
+                            }
+                        }
+                    },
+
+                    scales: {
+
+                        x: {
+
+                            ticks: {
+
+                                color: "white",
+
+                                font: {
+
+                                    size: 15
+                                }
+                            }
+                        },
+
+                        y: {
+
+                            beginAtZero: true,
+
+                            ticks: {
+
+                                color: "white",
+
+                                font: {
+
+                                    size: 15
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ===========================
+        // ❌ CLOSE BOX
+        // ===========================
+
+        if(
+            e.target.id ===
+            "closeZoomGraph"
+        ){
+
+            document.getElementById(
+                "graphZoomBox"
+            )?.remove();
+        }
+    });
+
+},1000);
+
+
+// ===============================
+// 📈 CURVE GRAPH SYSTEM FIX
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+    // আগের function replace
+    const oldLoadMonthlyGraph =
+        loadMonthlyGraph;
+
+    loadMonthlyGraph =
+    async function(monthValue){
+
+        const ctx =
+            document.getElementById(
+                "monthlyStudyChart"
+            ).getContext("2d");
+
+        const progressQuery =
+            query(
+                collection(
+                    db,
+                    "studyProgress"
+                ),
+                where(
+                    "userId",
+                    "==",
+                    currentUser.uid
+                )
+            );
+
+        const snap =
+            await getDocs(
+                progressQuery
+            );
+
+        const [year, month] =
+            monthValue.split("-");
+
+        const daysInMonth =
+            new Date(
+                year,
+                month,
+                0
+            ).getDate();
+
+        let graphData = [];
+
+        for(
+            let day = 1;
+            day <= daysInMonth;
+            day++
+        ){
+
+            const dateStr =
+                `${year}-${month}-${String(day).padStart(2,"0")}`;
+
+            let totalHours = 0;
+
+            snap.forEach((docSnap)=>{
+
+                const data =
+                    docSnap.data();
+
+                if(
+                    data.date === dateStr
+                ){
+
+                    totalHours =
+                        data.completedHours
+                        ? data.completedHours
+                        .filter(v=>v===true)
+                        .length
+                        : 0;
+                }
+            });
+
+            graphData.push(totalHours);
+        }
+
+        // আগের chart destroy
+        if(window.monthlyStudyChart){
+
+            window.monthlyStudyChart.destroy();
+        }
+
+        // ===========================
+        // 🎯 CURVE GRAPH
+        // ===========================
+
+        window.monthlyStudyChart =
+            new Chart(ctx, {
+
+            type: "line",
+
+            data: {
+
+                labels:
+                    Array.from(
+                        {
+                            length: daysInMonth
+                        },
+                        (_,i)=>i+1
+                    ),
+
+                datasets: [{
+
+                    label:
+                        "Study Hours",
+
+                    data:
+                        graphData,
+
+                    borderColor:
+                        "#67e8ff",
+
+                    backgroundColor:
+                        "rgba(103,232,255,0.15)",
+
+                    borderWidth: 5,
+
+                    // ✅ বক্র রেখা
+                    tension: 0.45,
+
+                    // ✅ গোল পয়েন্ট
+                    pointRadius: 6,
+
+                    pointHoverRadius: 9,
+
+                    pointBackgroundColor:
+                        "#67e8ff",
+
+                    pointBorderColor:
+                        "#ffffff",
+
+                    pointBorderWidth: 2,
+
+                    fill: false
+                }]
+            },
+
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                interaction: {
+
+                    intersect: false,
+
+                    mode: "index"
+                },
+
+                plugins: {
+
+                    legend: {
+
+                        labels: {
+
+                            color: "white",
+
+                            font: {
+
+                                size: 16,
+
+                                weight: "bold"
+                            }
+                        }
+                    }
+                },
+
+                scales: {
+
+                    x: {
+
+                        ticks: {
+
+                            color: "white",
+
+                            font: {
+
+                                size: 14
+                            }
+                        },
+
+                        grid: {
+
+                            color:
+                                "rgba(255,255,255,0.08)"
+                        }
+                    },
+
+                    y: {
+
+                        beginAtZero: true,
+
+                        ticks: {
+
+                            color: "white",
+
+                            stepSize: 1,
+
+                            font: {
+
+                                size: 14
+                            }
+                        },
+
+                        grid: {
+
+                            color:
+                                "rgba(255,255,255,0.08)"
+                        }
+                    }
+                }
+            }
+        });
+    };
+
+},1000);
+
+
+
+// ===============================
+// 📊 GRAPH STYLE CHANGER FIX
+// ===============================
+
+setTimeout(()=>{
+
+// ✅ graph select box add
+const graphSelect =
+document.createElement("select");
+
+graphSelect.id =
+"graphStyleSelect";
+
+graphSelect.style.padding =
+"10px";
+
+graphSelect.style.borderRadius =
+"10px";
+
+graphSelect.style.marginBottom =
+"15px";
+
+graphSelect.style.background =
+"#0f1a2f";
+
+graphSelect.style.color =
+"white";
+
+graphSelect.innerHTML = `
+
+<option value="line">
+📈 Line Graph
+</option>
+
+<option value="bar">
+📊 Bar Graph
+</option>
+
+<option value="radar">
+🕸 Radar Graph
+</option>
+
+<option value="doughnut">
+🍩 Doughnut
+</option>
+
+<option value="polarArea">
+🌐 Polar
+</option>
+`;
+
+const canvas =
+document.getElementById(
+"monthlyStudyChart"
+);
+
+if(canvas){
+
+canvas.parentElement
+.insertBefore(
+graphSelect,
+canvas
+);
+
+}
+
+
+// ===============================
+// 🔄 GRAPH CHANGE
+// ===============================
+
+document.addEventListener(
+"change",
+function(e){
+
+if(
+e.target.id ===
+"graphStyleSelect"
+){
+
+const chart =
+Chart.getChart(
+"monthlyStudyChart"
+);
+
+if(!chart) return;
+
+chart.config.type =
+e.target.value;
+
+chart.update();
+}
+});
+
+},1000);
+
+// ===============================
+// 🚀 AUTO GRAPH MASTER FIX
+// ✅ কিছু delete করতে হবে না
+// ✅ শুধু একদম সবার নিচে বসান
+// ===============================
+
+setTimeout(()=>{
+
+// ===============================
+// 🛡️ DUPLICATE STOP
+// ===============================
+
+if(window.graphMasterFixed) return;
+
+window.graphMasterFixed = true;
+
+
+// ===============================
+// 📊 GRAPH STYLE SELECT AUTO
+// ===============================
+
+function createGraphStyleSelector(){
+
+    const canvas =
+    document.getElementById(
+        "monthlyStudyChart"
+    );
+
+    if(!canvas) return;
+
+    // আগে থাকলে আর বানাবে না
+    if(
+        document.getElementById(
+            "graphStyleSelect"
+        )
+    ) return;
+
+    const select =
+    document.createElement("select");
+
+    select.id =
+    "graphStyleSelect";
+
+    select.style.padding =
+    "10px";
+
+    select.style.borderRadius =
+    "12px";
+
+    select.style.marginBottom =
+    "15px";
+
+    select.style.background =
+    "#07152f";
+
+    select.style.color =
+    "white";
+
+    select.style.width =
+    "100%";
+
+    select.innerHTML = `
+
+        <option value="line">
+        📈 Line Graph
+        </option>
+
+        <option value="bar">
+        📊 Bar Graph
+        </option>
+
+        <option value="radar">
+        🕸 Radar Graph
+        </option>
+
+        <option value="doughnut">
+        🍩 Doughnut Graph
+        </option>
+
+        <option value="polarArea">
+        🌐 Polar Graph
+        </option>
+    `;
+
+    canvas.parentElement.insertBefore(
+        select,
+        canvas
+    );
+}
+
+
+// ===============================
+// 🔄 GRAPH CHANGE
+// ===============================
+
+document.addEventListener(
+"change",
+function(e){
+
+if(
+    e.target.id ===
+    "graphStyleSelect"
+){
+
+    const oldChart =
+    Chart.getChart(
+        "monthlyStudyChart"
+    );
+
+    if(!oldChart) return;
+
+    const chartType =
+    e.target.value;
+
+    const labels =
+    oldChart.data.labels;
+
+    const values =
+    oldChart.data.datasets[0].data;
+
+    oldChart.destroy();
+
+    const ctx =
+    document.getElementById(
+        "monthlyStudyChart"
+    ).getContext("2d");
+
+    window.monthlyStudyChart =
+    new Chart(ctx,{
+
+        type:chartType,
+
+        data:{
+
+            labels:labels,
+
+            datasets:[{
+
+                label:"Study Hours",
+
+                data:values,
+
+                borderColor:"#67e8ff",
+
+                backgroundColor:
+                "rgba(103,232,255,0.18)",
+
+                borderWidth:5,
+
+                tension:0.45,
+
+                pointRadius:6,
+
+                pointHoverRadius:10,
+
+                fill:
+                chartType === "line"
+            }]
+        },
+
+        options:{
+
+            responsive:true,
+
+            maintainAspectRatio:false,
+
+            interaction:{
+
+                intersect:false,
+
+                mode:"index"
+            },
+
+            plugins:{
+
+                legend:{
+
+                    labels:{
+
+                        color:"white",
+
+                        font:{
+                            size:16
+                        }
+                    }
+                }
+            },
+
+            scales:{
+
+                x:{
+
+                    ticks:{
+
+                        color:"white"
+                    },
+
+                    grid:{
+
+                        color:
+                        "rgba(255,255,255,0.08)"
+                    }
+                },
+
+                y:{
+
+                    beginAtZero:true,
+
+                    ticks:{
+
+                        color:"white",
+
+                        stepSize:1
+                    },
+
+                    grid:{
+
+                        color:
+                        "rgba(255,255,255,0.08)"
+                    }
+                }
+            }
+        }
+    });
+}
+});
+
+
+// ===============================
+// 🔍 BIG GRAPH SYSTEM
+// ===============================
+
+document.addEventListener(
+"click",
+function(e){
+
+if(
+    e.target.id ===
+    "monthlyStudyChart"
+){
+
+    // আগে modal থাকলে remove
+    document.getElementById(
+        "ultimateBigGraph"
+    )?.remove();
+
+    const modal =
+    document.createElement("div");
+
+    modal.id =
+    "ultimateBigGraph";
+
+    modal.style.position =
+    "fixed";
+
+    modal.style.top = "0";
+
+    modal.style.left = "0";
+
+    modal.style.width = "100%";
+
+    modal.style.height = "100%";
+
+    modal.style.background =
+    "rgba(0,0,0,0.94)";
+
+    modal.style.zIndex =
+    "999999";
+
+    modal.style.padding =
+    "15px";
+
+    modal.style.overflow =
+    "auto";
+
+    modal.innerHTML = `
+
+    <div style="
+    background:#07152f;
+    border:2px solid #67e8ff;
+    border-radius:25px;
+    padding:20px;
+    margin-top:30px;
+    ">
+
+    <div style="
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+    gap:10px;
+    ">
+
+    <h2 style="
+    color:white;
+    font-size:28px;
+    ">
+    📈 বড় গ্রাফ
+    </h2>
+
+    <button
+    id="closeUltimateGraph"
+    class="btn btn-danger">
+
+    ✖ বন্ধ
+
+    </button>
+
+    </div>
+
+    <canvas
+    id="ultimateBigCanvas"
+    height="280">
+    </canvas>
+
+    </div>
+    `;
+
+    document.body.appendChild(
+        modal
+    );
+
+    const oldChart =
+    Chart.getChart(
+        "monthlyStudyChart"
+    );
+
+    if(!oldChart) return;
+
+    const ctx =
+    document.getElementById(
+        "ultimateBigCanvas"
+    ).getContext("2d");
+
+    new Chart(ctx,{
+
+        type:
+        oldChart.config.type,
+
+        data:
+        oldChart.data,
+
+        options:{
+
+            responsive:true,
+
+            maintainAspectRatio:false,
+
+            interaction:{
+
+                intersect:false,
+
+                mode:"index"
+            },
+
+            plugins:{
+
+                legend:{
+
+                    labels:{
+
+                        color:"white",
+
+                        font:{
+                            size:20
+                        }
+                    }
+                }
+            },
+
+            scales:{
+
+                x:{
+
+                    ticks:{
+
+                        color:"white",
+
+                        font:{
+                            size:16
+                        }
+                    },
+
+                    grid:{
+
+                        color:
+                        "rgba(255,255,255,0.08)"
+                    }
+                },
+
+                y:{
+
+                    beginAtZero:true,
+
+                    ticks:{
+
+                        color:"white",
+
+                        stepSize:1,
+
+                        font:{
+                            size:16
+                        }
+                    },
+
+                    grid:{
+
+                        color:
+                        "rgba(255,255,255,0.08)"
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+// ===============================
+// ❌ CLOSE BIG GRAPH
+// ===============================
+
+if(
+    e.target.id ===
+    "closeUltimateGraph"
+){
+
+    document.getElementById(
+        "ultimateBigGraph"
+    )?.remove();
+}
+});
+
+
+// ===============================
+// 🔄 AUTO CHECK LOOP
+// ===============================
+
+setInterval(()=>{
+
+    createGraphStyleSelector();
+
+},1500);
+
+},1000);
+
+
+// ===============================
+// 🚀 ULTIMATE GRAPH FIX
+// ===============================
+
+setTimeout(() => {
+
+    // ===========================
+    // 🎯 GRAPH CANVAS FIX
+    // ===========================
+
+    const graphCanvas =
+    document.getElementById(
+        "monthlyStudyChart"
+    );
+
+    if(graphCanvas){
+
+        graphCanvas.style.width =
+        "100%";
+
+        graphCanvas.style.height =
+        "320px";
+
+        graphCanvas.style.maxHeight =
+        "320px";
+
+        graphCanvas.height = 320;
+    }
+
+
+    // ===========================
+    // 🛑 OLD CHART DESTROY FIX
+    // ===========================
+
+    const originalLoadGraph =
+    loadMonthlyGraph;
+
+    loadMonthlyGraph =
+    async function(monthValue){
+
+        // আগের chart destroy
+        const oldChart =
+        Chart.getChart(
+            "monthlyStudyChart"
+        );
+
+        if(oldChart){
+
+            oldChart.destroy();
+        }
+
+        // original function run
+        await originalLoadGraph(
+            monthValue
+        );
+
+        // height lock
+        const canvas =
+        document.getElementById(
+            "monthlyStudyChart"
+        );
+
+        if(canvas){
+
+            canvas.style.height =
+            "320px";
+
+            canvas.height = 320;
+        }
+    };
+
+
+    // ===========================
+    // 🛑 WINDOW RESIZE FIX
+    // ===========================
+
+    window.addEventListener(
+    "resize",
+    () => {
+
+        const canvas =
+        document.getElementById(
+            "monthlyStudyChart"
+        );
+
+        if(canvas){
+
+            canvas.style.height =
+            "320px";
+
+            canvas.height = 320;
+        }
+    });
+
+},1000);
+
+
+// ===============================
+// 🔒 GRAPH ZOOM LOCK FIX
+// ✅ graph এ চাপলে আর zoom হবে না
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+// chart click বন্ধ
+document.addEventListener(
+"click",
+function(e){
+
+if(
+    e.target.id ===
+    "monthlyStudyChart"
+){
+
+    // click stop
+    e.stopImmediatePropagation();
+
+    e.preventDefault();
+
+    return false;
+}
+},
+true);
+
+
+// আগে zoom box থাকলে remove
+document.getElementById(
+    "graphZoomBox"
+)?.remove();
+
+document.getElementById(
+    "ultimateBigGraph"
+)?.remove();
+
+document.getElementById(
+    "bigGraphModal"
+)?.remove();
+
+},1000);
+
+
+// ===============================
+// 🔙 GRAPH CLOSE SCROLL BACK FIX
+// ✅ Close চাপলে আগের জায়গায় ফিরে যাবে
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+let lastScrollPosition = 0;
+
+
+// ===============================
+// 📈 GRAPH OPEN POSITION SAVE
+// ===============================
+
+const oldGraphOpen =
+monthGraphBtn.onclick;
+
+monthGraphBtn.onclick =
+async function(){
+
+    // বর্তমান scroll save
+    lastScrollPosition =
+    window.scrollY;
+
+    // আগের function run
+    if(oldGraphOpen){
+
+        await oldGraphOpen();
+    }
+};
+
+
+// ===============================
+// ❌ CLOSE করলে আগের জায়গায়
+// ===============================
+
+document.addEventListener(
+"click",
+function(e){
+
+if(
+    e.target.id ===
+    "closeMonthGraph"
+){
+
+    setTimeout(()=>{
+
+        window.scrollTo({
+
+            top:lastScrollPosition,
+
+            behavior:"smooth"
+        });
+
+    },300);
+}
+});
+
+},1000);
+
+
+
 </script>
 
 
 </body>
-                                           </html>
+</html>
