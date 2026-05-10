@@ -603,6 +603,12 @@ document.getElementById("dashboard")
 // 📅 NEW HISTORY SYSTEM FIX
 // ===============================
 
+// ===============================
+// 📅 HISTORY LATEST DATE FIRST
+// ===============================
+
+// 👇 পুরানো loadHistoryData() delete করে এটা বসান 👇
+
 async function loadHistoryData(){
 
     const container =
@@ -626,7 +632,6 @@ async function loadHistoryData(){
         const data =
             docSnap.data();
 
-        // 11 অথবা 15 দুইটাই support করবে
         let completed = 0;
 
         if(
@@ -644,7 +649,6 @@ async function loadHistoryData(){
             completed;
     });
 
-    // 📅 শুরু 2026
     let startDate =
         new Date("2026-01-01");
 
@@ -653,6 +657,7 @@ async function loadHistoryData(){
 
     container.innerHTML = "";
 
+    // ✅ আজকের তারিখ থেকে শুরু করবে
     let loopDate =
         new Date(today);
 
@@ -672,20 +677,23 @@ async function loadHistoryData(){
         const dateStr =
             `${year}-${month}-${day}`;
 
-        // data না থাকলে 0
         const hours =
             progressMap[dateStr] || 0;
 
         const item =
             document.createElement("div");
 
-        item.style.padding = "14px";
+        item.style.padding =
+            "14px";
 
-        item.style.marginBottom = "10px";
+        item.style.marginBottom =
+            "10px";
 
-        item.style.borderRadius = "14px";
+        item.style.borderRadius =
+            "14px";
 
-        item.style.display = "flex";
+        item.style.display =
+            "flex";
 
         item.style.justifyContent =
             "space-between";
@@ -720,15 +728,15 @@ async function loadHistoryData(){
             </div>
         `;
 
+        // ✅ নতুন তারিখ উপরে show হবে
         container.appendChild(item);
 
+        // ⬅️ একদিন পিছাবে
         loopDate.setDate(
-            loopDate.getDate()-1
+            loopDate.getDate() - 1
         );
     }
 }
-
-
 // ===============================
 // 🎯 BUTTON CLICK
 // ===============================
@@ -860,8 +868,247 @@ setTimeout(()=>{
 
 
 
+
+
+// ===============================
+// 📅 HISTORY PAGE AUTO FIX
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+    // ===========================
+    // 🎯 HISTORY BUTTON FIX
+    // ===========================
+
+    historyBtn.onclick = async function(){
+
+        historyPage.style.display =
+            "block";
+
+        await loadHistoryData();
+
+        // ✅ উপরে থাকবে
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+        // ✅ latest date আগে
+        const historyList =
+            document.getElementById(
+                "historyList"
+            );
+
+        if(historyList){
+
+            historyList.scrollTop = 0;
+        }
+    };
+
+
+    // ===========================
+    // 📅 HISTORY DATA FIX
+    // ===========================
+
+    loadHistoryData = async function(){
+
+        const container =
+            document.getElementById(
+                "historyList"
+            );
+
+        container.innerHTML =
+            "⏳ লোড হচ্ছে...";
+
+        const progressQuery =
+            query(
+                collection(
+                    db,
+                    "studyProgress"
+                ),
+                where(
+                    "userId",
+                    "==",
+                    currentUser.uid
+                )
+            );
+
+        const snap =
+            await getDocs(
+                progressQuery
+            );
+
+        let progressMap = {};
+
+        snap.forEach((docSnap)=>{
+
+            const data =
+                docSnap.data();
+
+            let completed = 0;
+
+            if(
+                data.completedHours &&
+                Array.isArray(
+                    data.completedHours
+                )
+            ){
+
+                completed =
+                    data.completedHours
+                    .filter(v=>v===true)
+                    .length;
+            }
+
+            progressMap[data.date] =
+                completed;
+        });
+
+        const today =
+            new Date();
+
+        const startDate =
+            new Date("2026-01-01");
+
+        container.innerHTML = "";
+
+        // ✅ আজকের তারিখ আগে
+        let loopDate =
+            new Date(today);
+
+        while(loopDate >= startDate){
+
+            const year =
+                loopDate.getFullYear();
+
+            const month =
+                String(
+                    loopDate.getMonth()+1
+                ).padStart(2,"0");
+
+            const day =
+                String(
+                    loopDate.getDate()
+                ).padStart(2,"0");
+
+            const dateStr =
+                `${year}-${month}-${day}`;
+
+            const hours =
+                progressMap[dateStr] || 0;
+
+            const item =
+                document.createElement(
+                    "div"
+                );
+
+            item.style.padding =
+                "14px";
+
+            item.style.marginBottom =
+                "10px";
+
+            item.style.borderRadius =
+                "14px";
+
+            item.style.display =
+                "flex";
+
+            item.style.justifyContent =
+                "space-between";
+
+            item.style.alignItems =
+                "center";
+
+            item.style.background =
+                hours === 0
+                ? "rgba(255,0,0,0.18)"
+                : "rgba(0,120,255,0.18)";
+
+            item.style.border =
+                hours === 0
+                ? "1px solid rgba(255,80,80,0.4)"
+                : "1px solid rgba(80,160,255,0.4)";
+
+            item.innerHTML = `
+                <div>
+                    📅
+                    <strong>
+                        ${dateStr}
+                    </strong>
+                </div>
+
+                <div style="
+                    font-weight:bold;
+                    color:${
+                        hours===0
+                        ? '#ff6b6b'
+                        : '#6bff95'
+                    };
+                ">
+                    ${hours} ঘন্টা
+                </div>
+            `;
+
+            // ✅ নতুন date উপরে
+            container.appendChild(
+                item
+            );
+
+            loopDate.setDate(
+                loopDate.getDate()-1
+            );
+        }
+    };
+
+},1000);
+
+
+// ===============================
+// 🎯 HISTORY SMOOTH SCROLL FIX
+// ===============================
+
+// 👇 এটা একদম সবার নিচে বসান 👇
+
+setTimeout(()=>{
+
+    historyBtn.onclick = async function(){
+
+        // ✅ history page show
+        historyPage.style.display =
+            "block";
+
+        // ✅ data load
+        await loadHistoryData();
+
+        // ✅ smooth scroll করে
+        // history section এ নিয়ে যাবে
+        historyPage.scrollIntoView({
+
+            behavior: "smooth",
+
+            block: "start"
+        });
+
+        // ✅ list top এ থাকবে
+        const historyList =
+            document.getElementById(
+                "historyList"
+            );
+
+        if(historyList){
+
+            historyList.scrollTop = 0;
+        }
+    };
+
+},1000);
+
+
 </script>
 
 
 </body>
-</html>
+                                           </html>
