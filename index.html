@@ -4354,6 +4354,243 @@ setTimeout(() => {
 
 },1000);
 
+ //timefix korlam
+ // ======================================
+// 🚀 FINAL FIREBASE TIMER SYSTEM
+// ======================================
+
+window.addEventListener("load", () => {
+
+setTimeout(() => {
+
+    // duplicate stop
+    if(window.finalTimerSystemLoaded) return;
+
+    window.finalTimerSystemLoaded = true;
+
+    let interval = null;
+
+    // ==================================
+    // 📂 TIMER REF
+    // ==================================
+
+    function timerDoc(){
+
+        if(!currentUser) return null;
+
+        return doc(
+            db,
+            "focusTimers",
+            currentUser.uid
+        );
+    }
+
+    // ==================================
+    // 💾 SAVE TIMER
+    // ==================================
+
+    async function saveTimer(){
+
+        if(!currentUser) return;
+
+        const ref =
+        timerDoc();
+
+        if(!ref) return;
+
+        await setDoc(
+            ref,
+            {
+
+                running:
+                timerActive,
+
+                seconds:
+                timerSeconds,
+
+                endTime:
+                Date.now() +
+                (timerSeconds * 1000)
+
+            },
+            {
+                merge:true
+            }
+        );
+    }
+
+    // ==================================
+    // 📥 LOAD TIMER
+    // ==================================
+
+    async function loadTimer(){
+
+        if(!currentUser) return;
+
+        const ref =
+        timerDoc();
+
+        if(!ref) return;
+
+        const snap =
+        await getDoc(ref);
+
+        if(!snap.exists()) return;
+
+        const data =
+        snap.data();
+
+        if(!data.running){
+
+            timerSeconds =
+            data.seconds || 3600;
+
+            updateTimerDisplay();
+
+            return;
+        }
+
+        // remaining
+        const remaining =
+        Math.floor(
+            (data.endTime - Date.now())
+            / 1000
+        );
+
+        if(remaining <= 0){
+
+            timerSeconds = 0;
+
+            updateTimerDisplay();
+
+            autoCompleteNextHour();
+
+            return;
+        }
+
+        timerSeconds =
+        remaining;
+
+        updateTimerDisplay();
+
+        startRealtimeTimer();
+    }
+
+    // ==================================
+    // ⏱ REAL TIMER
+    // ==================================
+
+    function startRealtimeTimer(){
+
+        clearInterval(interval);
+
+        timerActive = true;
+
+        interval =
+        setInterval(async () => {
+
+            if(timerSeconds > 0){
+
+                timerSeconds--;
+
+                updateTimerDisplay();
+
+                // auto save
+                await saveTimer();
+            }
+
+            else{
+
+                clearInterval(interval);
+
+                timerActive = false;
+
+                updateTimerDisplay();
+
+                autoCompleteNextHour();
+
+                await saveTimer();
+            }
+
+        },1000);
+    }
+
+    // ==================================
+    // ▶ START BUTTON
+    // ==================================
+
+    document
+    .getElementById(
+        "startTimerBtn"
+    )
+    .onclick =
+    async function(){
+
+        timerActive = true;
+
+        await saveTimer();
+
+        startRealtimeTimer();
+    };
+
+    // ==================================
+    // ⏸ PAUSE BUTTON
+    // ==================================
+
+    document
+    .getElementById(
+        "pauseTimerBtn"
+    )
+    .onclick =
+    async function(){
+
+        timerActive = false;
+
+        clearInterval(interval);
+
+        await saveTimer();
+    };
+
+    // ==================================
+    // 🔄 RESET BUTTON
+    // ==================================
+
+    document
+    .getElementById(
+        "resetTimerBtn"
+    )
+    .onclick =
+    async function(){
+
+        clearInterval(interval);
+
+        timerActive = false;
+
+        timerSeconds = 3600;
+
+        updateTimerDisplay();
+
+        await saveTimer();
+    };
+
+    // ==================================
+    // 🚀 AUTO LOAD TIMER
+    // ==================================
+
+    setTimeout(async () => {
+
+        await loadTimer();
+
+    },2000);
+
+    console.log(
+        "✅ FIREBASE TIMER READY"
+    );
+
+},6000);
+
+});
+
 
 
 </script>
